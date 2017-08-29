@@ -1,4 +1,6 @@
-# SBD Sentence Bound Detection
+# DNLP
+
+## Sentence Bound Detection
 
 ### 文本预处理
 1. 还原html转义字符，&hellip; => ……
@@ -41,4 +43,4 @@ sbd任务
 1) 受限于硬件资源，训练集少，句子长度100，10个epoch耗时3小时，句子长度过大MemoryError
 2) <UNK>的处理
 
-# Word Error Detection And Correction
+## Word Error Detection And Correction
