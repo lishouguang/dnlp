@@ -43,5 +43,17 @@ class MyTestCase(unittest.TestCase):
         write_file(os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'std.word.txt'), word_lines)
         write_file(os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'std.pinyin.txt'), pinyin_lines)
 
+    def test_symbol(self):
+        self.addCleanup(True)
+
+        SYMBOL_SOS = '<SOS>'
+        SYMBOL_EOS = '<EOS>'
+
+        line = '还不错。'
+
+        line = (SYMBOL_SOS + ' ') * 4 + line + (' ' + SYMBOL_EOS) * 4
+
+        print(line)
+
 if __name__ == '__main__':
     unittest.main()

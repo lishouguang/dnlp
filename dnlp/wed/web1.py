@@ -27,6 +27,10 @@ from dnlp.config import RESOURCE_PATH
 from dnlp.utils import iter_file
 
 
+SYMBOL_SOS = '<SOS>'
+SYMBOL_EOS = '<EOS>'
+
+
 def build_chars(corpus_file):
     chars = set()
 
@@ -37,6 +41,9 @@ def build_chars(corpus_file):
     # chars.remove('。')
     # chars.remove('？')
     # chars.remove('！')
+
+    chars.add(SYMBOL_SOS)
+    chars.add(SYMBOL_EOS)
 
     return sorted(list(chars))
 
@@ -67,10 +74,8 @@ def run():
     next_chars = []
 
     for line in iter_file(os.path.join(corpus_file)):
+        line = (SYMBOL_SOS + ' ') * 4 + line + (' ' + SYMBOL_EOS) * 4
         words = line.split()
-
-        if len(words) < maxlen + step:
-            continue
 
         for i in range(0, len(words) - maxlen, step):
             histories.append(words[i: i + maxlen])
