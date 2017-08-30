@@ -21,7 +21,7 @@ class MyTestCase(unittest.TestCase):
 
         EXTRACT_TOKEN_RE = r'([a-z0-9]+)'
 
-        txt = '，wifi经常断a8还不错'
+        txt = '太窝火了，WIFI连不上'.lower()
 
         for x in re.split(EXTRACT_TOKEN_RE, txt):
             print('->', x)

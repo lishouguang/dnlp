@@ -15,14 +15,14 @@ class MyTestCase(unittest.TestCase):
     def test_something(self):
         self.assertEqual(True, False)
 
-    def test_convert2pinyin(self):
+    def test_create_data(self):
         self.assertTrue(True)
 
         word_lines = []
         pinyin_lines = []
 
         for line in iter_file(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt')):
-            tps = tag_pinyin(line)
+            tps = tag_pinyin(line.lower())
 
             words = []
             pinyins = []

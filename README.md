@@ -44,3 +44,7 @@ sbd任务
 2) <UNK>的处理
 
 ## Word Error Detection And Correction
+
+### 训练
+X: 一个"句子"，几个连续的字/词
+y: 字/词
