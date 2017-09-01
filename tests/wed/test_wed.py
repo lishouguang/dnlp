@@ -55,5 +55,11 @@ class MyTestCase(unittest.TestCase):
 
         print(line)
 
+    def test_xx(self):
+        self.assertTrue(True)
+
+        a = [1, 2, 3, 4, 5]
+        print(a[-4:])
+
 if __name__ == '__main__':
     unittest.main()

@@ -18,6 +18,8 @@ import sys
 import random
 import numpy as np
 
+from sklearn.utils import shuffle
+
 from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras.layers import LSTM
@@ -105,10 +107,13 @@ def run():
     model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 
     # train the model, output generated text after each iteration
-    for iteration in range(1, 60):
+    for iteration in range(1, 1000):
         print()
         print('-' * 50)
         print('Iteration', iteration)
+
+        X, y = shuffle(X, y)
+
         model.fit(X, y, batch_size=128, epochs=1)
 
         model.save(os.path.join(RESOURCE_PATH, 'model', 'wed', 'wed.epoch_{}.model').format(iteration))
@@ -117,11 +122,12 @@ def run():
             print()
             print('----- diversity:', diversity)
 
-            generated = ''
-            history = random.sample(chars, 1)
+            generated = []
+            # history = [SYMBOL_SOS, SYMBOL_SOS, SYMBOL_SOS] + random.sample(chars, 1)
+            history = [SYMBOL_SOS, SYMBOL_SOS, SYMBOL_SOS, SYMBOL_SOS]
             generated += history
-            print('----- Generating with seed: "' + history + '"')
-            sys.stdout.write(generated)
+            print('----- Generating with seed: "' + ' '.join(history) + '"')
+            sys.stdout.write(' '.join(generated))
 
             for i in range(50):
                 x = np.zeros((1, maxlen, len(chars)))
@@ -132,8 +138,8 @@ def run():
                 next_index = sample(preds, diversity)
                 next_char = idx2char[next_index]
 
-                generated += next_char
-                history = history[1:] + next_char
+                generated += [next_char]
+                history = history[-3:] + [next_char]
 
                 sys.stdout.write(next_char)
                 sys.stdout.flush()
