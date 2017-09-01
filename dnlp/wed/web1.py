@@ -13,13 +13,16 @@ has at least ~100k characters. ~1M is better.
 '''
 from __future__ import print_function
 
+import re
 import os
 import sys
+import math
 import random
 import numpy as np
 
 from sklearn.utils import shuffle
 
+import keras
 from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras.layers import LSTM
@@ -27,17 +30,50 @@ from keras.optimizers import RMSprop
 
 from dnlp.config import RESOURCE_PATH
 from dnlp.utils import iter_file
+from dnlp.utils import write_file
+from dnlp.nlp.pinyin import tag_pinyin
 
 
 SYMBOL_SOS = '<SOS>'
 SYMBOL_EOS = '<EOS>'
 
 
-def build_chars(corpus_file):
+def create_train_data():
+    word_lines = []
+    pinyin_lines = []
+
+    for line in iter_file(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt')):
+        words, pinyins = create_txt_data(line)
+
+        word_lines.append(words)
+        pinyin_lines.append(pinyins)
+
+    # write_file(os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'std.word.txt'), word_lines)
+    # write_file(os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'std.pinyin.txt'), pinyin_lines)
+    return word_lines, pinyin_lines
+
+
+def create_txt_data(line):
+    tps = tag_pinyin(line.lower())
+    words = []
+    pinyins = []
+    for tp in tps:
+        if tp[1] is not None:
+            words.append(tp[0])
+            pinyins.append(tp[1])
+        else:
+            for x in re.split(r'([a-z0-9]+)', tp[0]):
+                if x:
+                    words.append(x)
+                    pinyins.append(x)
+    return words, pinyins
+
+
+def build_chars(corpus):
     chars = set()
 
-    for line in iter_file(corpus_file):
-        chars |= set(line.lower().split())
+    for words in corpus:
+        chars |= set([w.lower() for w in words])
 
     # chars.remove('，')
     # chars.remove('。')
@@ -47,7 +83,24 @@ def build_chars(corpus_file):
     chars.add(SYMBOL_SOS)
     chars.add(SYMBOL_EOS)
 
-    return sorted(list(chars))
+    chars = sorted(list(chars))
+    char2idx = dict((c, i) for i, c in enumerate(chars))
+    idx2char = dict((i, c) for i, c in enumerate(chars))
+
+    return chars, char2idx, idx2char
+
+
+def create_history_word(words, history_len, step):
+    histories = []
+    next_chars = []
+
+    words = [SYMBOL_SOS] * 4 + words + [SYMBOL_EOS] * 4
+
+    for i in range(0, len(words) - history_len, step):
+        histories.append(words[i: i + history_len])
+        next_chars.append(words[i + history_len])
+
+    return histories, next_chars
 
 
 def sample(preds, temperature=1.0):
@@ -60,14 +113,11 @@ def sample(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def run():
-    corpus_file = os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'std.word.txt')
-    chars = build_chars(corpus_file)
+def train():
+    corpus_words, corpus_pinyins = create_train_data()
+    chars, char2idx, idx2char = build_chars(corpus_words)
 
     print('total chars:', len(chars))
-
-    char2idx = dict((c, i) for i, c in enumerate(chars))
-    idx2char = dict((i, c) for i, c in enumerate(chars))
 
     # cut the text in semi-redundant sequences of maxlen characters
     maxlen = 5
@@ -75,13 +125,10 @@ def run():
     histories = []
     next_chars = []
 
-    for line in iter_file(os.path.join(corpus_file)):
-        line = (SYMBOL_SOS + ' ') * 4 + line + (' ' + SYMBOL_EOS) * 4
-        words = line.split()
-
-        for i in range(0, len(words) - maxlen, step):
-            histories.append(words[i: i + maxlen])
-            next_chars.append(words[i + maxlen])
+    for words in corpus_words:
+        histories_, next_chars_ = create_history_word(words, maxlen, step)
+        histories += histories_
+        next_chars += next_chars_
 
     print('history sequences:', len(histories))
 
@@ -146,5 +193,72 @@ def run():
             print()
 
 
+def predict(txts, model, chars, char2idx, idx2char):
+    maxlen = 5
+    step = 2
+
+    for txt in txts:
+
+        # TODO 文本预处理，清洗/添加标点，根据句号分句
+
+        words, pinyins = create_txt_data(txt)
+
+        histories, next_chars = create_history_word(words, maxlen, step)
+
+        # print numpy时显示全部数据
+        np.set_printoptions(threshold=np.nan)
+
+        score = 0
+        for history, next_char in zip(histories, next_chars):
+
+            x = np.zeros((1, maxlen, len(chars)), dtype=np.bool)
+            for i, word in enumerate(history):
+                x[0, i, char2idx[word]] = 1
+
+            pred = model.predict(x)[0]
+
+            prob = pred[char2idx[next_char]]
+            score += math.log(prob)
+            # print(history, next_char, prob, score)
+
+            # for idx in np.argsort(pred)[-1:-10:-1]:
+            #     print(idx2char[idx], pred[idx])
+
+        print(txt, 'score:', score)
+
+
+def predict_x():
+    corpus_words, corpus_pinyins = create_train_data()
+    chars, char2idx, idx2char = build_chars(corpus_words)
+
+    model = keras.models.load_model(os.path.join(RESOURCE_PATH, 'model', 'wed', 'wed.epoch_368.model'))
+
+    txts = [
+        '东西不错',
+        '客服服务态度很好',
+        '还给赠品了哟。',
+        '还行',
+        '还不错！',
+        '不错。',
+        '手机不错。',
+        '很漂亮的手机。',
+        '手机信号不太好',
+        '经常都搜索不到4G。',
+        '不错的手机',
+        '还没发现有什么问题',
+        '下次有机会再购买。',
+        '满意的。',
+        '机子很好的。',
+        '朋友都很喜欢的。',
+        '快递员很好的。',
+        '第二天就送到了的。',
+        '用的不错很好。',
+        '好错不明看去。'
+    ]
+
+    predict(txts, model, chars, char2idx, idx2char)
+
+
 if __name__ == '__main__':
-    run()
+    # train()
+    predict_x()
