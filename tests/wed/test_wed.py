@@ -61,5 +61,46 @@ class MyTestCase(unittest.TestCase):
         a = [1, 2, 3, 4, 5]
         print(a[-4:])
 
+    def test_wed_model_train(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import Model
+
+        model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        model.train()
+        model.save()
+
+    def test_predict(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import Model
+
+        model = Model.load()
+
+        txts = [
+            '东西不错',
+            '客服服务态度很好',
+            '还给赠品了哟。',
+            '还行',
+            '还不错！',
+            '不错。',
+            '手机不错。',
+            '很漂亮的手机。',
+            '手机信号不太好',
+            '经常都搜索不到4G。',
+            '不错的手机',
+            '还没发现有什么问题',
+            '下次有机会再购买。',
+            '满意的。',
+            '机子很好的。',
+            '朋友都很喜欢的。',
+            '快递员很好的。',
+            '第二天就送到了的。',
+            '用的不错很好。',
+            '好错不明看去。'
+        ]
+
+        model.predict(txts)
+
 if __name__ == '__main__':
     unittest.main()
