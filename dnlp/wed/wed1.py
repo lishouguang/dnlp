@@ -90,11 +90,12 @@ def build_chars(corpus):
     return chars, char2idx, idx2char
 
 
-def create_history_word(words, history_len, step):
+def create_history_word(words, history_len, maxlen, step):
     histories = []
     next_chars = []
 
-    words = [SYMBOL_SOS] * 4 + words + [SYMBOL_EOS] * 4
+    pad_num = maxlen - 1
+    words = [SYMBOL_SOS] * pad_num + words + [SYMBOL_EOS] * pad_num
 
     for i in range(0, len(words) - history_len, step):
         histories.append(words[i: i + history_len])
@@ -121,12 +122,12 @@ def train():
 
     # cut the text in semi-redundant sequences of maxlen characters
     maxlen = 5
-    step = 2
+    step = 1
     histories = []
     next_chars = []
 
     for words in corpus_words:
-        histories_, next_chars_ = create_history_word(words, maxlen, step)
+        histories_, next_chars_ = create_history_word(words, maxlen, maxlen, step)
         histories += histories_
         next_chars += next_chars_
 
