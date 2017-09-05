@@ -30,7 +30,14 @@ class Model(object):
 
     SYMBOL_SOS = '<SOS>'
     SYMBOL_EOS = '<EOS>'
+
     SYMBOL_UNKNOW = '<UNK>'
+
+    SYMBOL_ENV = '<ENV>'
+    SYMBOL_NUM = '<NUM>'
+    SYMBOL_ENV_NUM = '<ENV_NUM>'
+
+    SYMBOL_PUN = '<PUN>'
 
     def __init__(self, corpus_file, vocab_file=None, maxlen=5, step=1):
         if not vocab_file:
@@ -81,8 +88,22 @@ class Model(object):
             else:
                 for x in re.split(r'([a-z0-9]+)', tp[0]):
                     if x:
-                        words.append(x)
-                        pinyins.append(x)
+                        # words.append(x)
+                        # pinyins.append(x)
+
+                        symbol = Model.SYMBOL_ENV_NUM
+                        if re.match(r'^[a-z]+$', x):
+                            symbol = Model.SYMBOL_ENV
+                        elif re.match(r'^[0-9]+$', x):
+                            symbol = Model.SYMBOL_NUM
+                        elif re.match(r'^[a-z0-9]$', x):
+                            symbol = Model.SYMBOL_ENV_NUM
+                        elif re.match(r'^[。？！!?，,]$', x):
+                            symbol = Model.SYMBOL_PUN
+
+                        words.append(symbol)
+                        pinyins.append(symbol)
+
         return words, pinyins
 
     def build_chars(self):
@@ -90,16 +111,20 @@ class Model(object):
 
         for line in iter_file(self._vocab_file):
             words, pinyins = Model.segment_pinyin_txt(line)
-            chars |= set([w.lower() for w in words])
+            chars |= set([w for w in words])
 
         # chars.remove('，')
         # chars.remove('。')
         # chars.remove('？')
-        # chars.remove('！')
+        # chars.remove(a'！')
 
         chars.add(Model.SYMBOL_SOS)
         chars.add(Model.SYMBOL_EOS)
         chars.add(Model.SYMBOL_UNKNOW)
+        chars.add(Model.SYMBOL_ENV)
+        chars.add(Model.SYMBOL_NUM)
+        chars.add(Model.SYMBOL_ENV_NUM)
+        chars.add(Model.SYMBOL_PUN)
 
         chars = sorted(list(chars))
         char2idx = dict((c, i) for i, c in enumerate(chars))
@@ -235,6 +260,9 @@ class Model(object):
                 pred = self._model.predict(x)[0]
 
                 prob = pred[self.vocab_char2idx(next_char)]
+                if prob == 0:
+                    print('prob is zero!')
+                    print(history, next_char)
                 score += math.log(prob)
                 # print(history, next_char, prob, score)
 

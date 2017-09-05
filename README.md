@@ -45,6 +45,10 @@ sbd任务
 
 ## Word Error Detection And Correction
 
+### 数据
+文本 -> 清洗
+-> <UNK> <PUN> <NUM> <ENV> <ENV_NUM>
+
 ### 训练
 X: 一个"句子"，几个连续的字/词
 y: 字/词

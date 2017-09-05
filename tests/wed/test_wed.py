@@ -61,6 +61,29 @@ class MyTestCase(unittest.TestCase):
         a = [1, 2, 3, 4, 5]
         print(a[-4:])
 
+    def test_wed_model_segment_pinyin(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import Model
+
+        Model.segment_pinyin_txt('我更喜欢Iphone，其他的就是8了')
+
+    def test_wed_model_vocab(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import Model
+        model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        model.build_chars()
+        print(model.vocab_chars)
+
+    def test_wed_model_train_data(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import Model
+
+        model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        model.build_train_data()
+
     def test_wed_model_train(self):
         self.assertTrue(True)
 
@@ -68,7 +91,7 @@ class MyTestCase(unittest.TestCase):
 
         model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
         model.train()
-        model.save()
+        # model.save()
 
     def test_predict(self):
         self.assertTrue(True)
