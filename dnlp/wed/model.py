@@ -239,7 +239,12 @@ class Model(object):
 
     def predict(self, txts):
 
+        scores = []
         for txt in txts:
+
+            if not txt:
+                scores.append(None)
+                continue
 
             # TODO 文本预处理，清洗/添加标点，根据句号分句
 
@@ -250,7 +255,7 @@ class Model(object):
             # print numpy时显示全部数据
             # np.set_printoptions(threshold=np.nan)
 
-            score = 0
+            probs = []
             for history, next_char in zip(histories, next_chars):
 
                 x = np.zeros((1, self._maxlen, len(self._chars)), dtype=np.bool)
@@ -260,16 +265,24 @@ class Model(object):
                 pred = self._model.predict(x)[0]
 
                 prob = pred[self.vocab_char2idx(next_char)]
+                probs.append(prob)
+
                 if prob == 0:
                     print('prob is zero!')
                     print(history, next_char)
-                score += math.log(prob)
+
                 # print(history, next_char, prob, score)
 
                 # for idx in np.argsort(pred)[-1:-10:-1]:
                 #     print(idx2char[idx], pred[idx])
 
-            print(txt, 'score:', score)
+            # print(txt, 'score:', score)
+            if 0 in probs:
+                scores.append(None)
+            else:
+                scores.append(sum(math.log(p) for p in probs) / len(probs))
+
+        return scores
 
     def save(self):
 

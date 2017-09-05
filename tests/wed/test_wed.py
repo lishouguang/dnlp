@@ -91,7 +91,7 @@ class MyTestCase(unittest.TestCase):
 
         model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
         model.train()
-        # model.save()
+        model.save()
 
     def test_predict(self):
         self.assertTrue(True)
@@ -120,10 +120,33 @@ class MyTestCase(unittest.TestCase):
             '快递员很好的。',
             '第二天就送到了的。',
             '用的不错很好。',
-            '好错不明看去。'
+            '眼泪不停的往下掉。',
+            '用着还行，没有出现什么大问题，物流很给力。'
         ]
 
-        model.predict(txts)
+        lines = [_ for _ in iter_file(os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'comment.txt'))]
+        scores = model.predict(lines)
+
+        xlines = []
+        xscores = []
+        for line, score in zip(lines, scores):
+            print(line)
+            print(score)
+
+            if score:
+                xlines.append(xlines)
+                xscores.append(score)
+
+        import numpy as np
+
+        nscores = np.array(xscores)
+        print(nscores.sum(), nscores.size)
+        print(nscores.sum() / nscores.size)
+        for i in nscores.argsort()[-1:-10:-1]:
+            print(xlines[i])
+            print(nscores[i])
+
+
 
 if __name__ == '__main__':
     unittest.main()
