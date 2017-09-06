@@ -39,7 +39,7 @@ class Model(object):
 
     SYMBOL_PUN = '<PUN>'
 
-    def __init__(self, corpus_file, vocab_file=None, maxlen=5, step=1):
+    def __init__(self, corpus_file, vocab_file=None, maxlen=5, step=1, workspace=os.path.join(RESOURCE_PATH, 'model', 'wed')):
         if not vocab_file:
             vocab_file = corpus_file
 
@@ -55,7 +55,7 @@ class Model(object):
         self._corpus_file = corpus_file
         self._vocab_file = vocab_file
 
-        self._workspace = os.path.join(RESOURCE_PATH, 'model', 'wed')
+        self._workspace = workspace
 
         self._char_file = os.path.join(self._workspace, 'wed.chars')
         self._char2idx_file = os.path.join(self._workspace, 'wed.char2idx')
@@ -110,7 +110,7 @@ class Model(object):
         chars = set()
 
         for line in iter_file(self._vocab_file):
-            words, pinyins = Model.segment_pinyin_txt(line)
+            words, pinyins = self.segment_pinyin_txt(line)
             chars |= set([w for w in words])
 
         # chars.remove('，')
@@ -159,10 +159,6 @@ class Model(object):
             histories_, next_chars_ = self.build_history_nextchars(words)
             histories += histories_
             next_chars += next_chars_
-
-        print('history sequences:', len(histories))
-
-        print('Vectorization...')
 
         X = np.zeros((len(histories), self._maxlen, len(self._chars)), dtype=np.bool)
         y = np.zeros((len(histories), len(self._chars)), dtype=np.bool)
@@ -311,3 +307,26 @@ class Model(object):
         model._model = kmodel
 
         return model
+
+
+class CharModel(Model):
+
+    def __init__(self, corpus_file, vocab_file=None, maxlen=5, step=1, workspace=None):
+        if workspace is None:
+            workspace = os.path.join(RESOURCE_PATH, 'model', 'wed', 'char')
+
+        Model.__init__(self, corpus_file, vocab_file=vocab_file, maxlen=maxlen, step=step, workspace=workspace)
+
+
+class PinyinModel(Model):
+
+    def __init__(self, corpus_file, vocab_file=None, maxlen=5, step=1, workspace=None):
+        if workspace is None:
+            workspace = os.path.join(RESOURCE_PATH, 'model', 'wed', 'pinyin')
+
+        Model.__init__(self, corpus_file, vocab_file=vocab_file, maxlen=maxlen, step=step, workspace=workspace)
+
+    @classmethod
+    def segment_pinyin_txt(cls, txt):
+        words, pinyins = Model.segment_pinyin_txt(txt)
+        return pinyins, pinyins

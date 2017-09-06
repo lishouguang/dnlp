@@ -72,7 +72,9 @@ class MyTestCase(unittest.TestCase):
         self.assertTrue(True)
 
         from dnlp.wed.model import Model
-        model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        # corpus_file = os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt')
+        corpus_file = os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'std.pinyin.txt')
+        model = Model(corpus_file)
         model.build_chars()
         print(model.vocab_chars)
 
@@ -97,8 +99,10 @@ class MyTestCase(unittest.TestCase):
         self.assertTrue(True)
 
         from dnlp.wed.model import Model
+        from dnlp.wed.model import CharModel
 
-        model = Model.load()
+        # model = Model.load()
+        model = CharModel.load()
 
         txts = [
             '东西不错',
@@ -146,6 +150,14 @@ class MyTestCase(unittest.TestCase):
             print(xlines[i])
             print(nscores[i])
 
+    def test_pinyin_model(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import PinyinModel
+
+        model = PinyinModel(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        model.train()
+        model.save()
 
 
 if __name__ == '__main__':
