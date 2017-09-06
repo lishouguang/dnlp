@@ -64,45 +64,50 @@ class MyTestCase(unittest.TestCase):
     def test_wed_model_segment_pinyin(self):
         self.assertTrue(True)
 
-        from dnlp.wed.model import Model
+        from dnlp.wed.model import BaseModel
 
-        Model.segment_pinyin_txt('我更喜欢Iphone，其他的就是8了')
+        BaseModel.segment_pinyin_txt('我更喜欢Iphone，其他的就是8了')
 
     def test_wed_model_vocab(self):
         self.assertTrue(True)
 
-        from dnlp.wed.model import Model
+        from dnlp.wed.model import BaseModel
         # corpus_file = os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt')
         corpus_file = os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'std.pinyin.txt')
-        model = Model(corpus_file)
+        model = BaseModel(corpus_file)
         model.build_chars()
         print(model.vocab_chars)
 
     def test_wed_model_train_data(self):
         self.assertTrue(True)
 
-        from dnlp.wed.model import Model
+        from dnlp.wed.model import BaseModel
 
-        model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        model = BaseModel(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
         model.build_train_data()
 
     def test_wed_model_train(self):
         self.assertTrue(True)
 
-        from dnlp.wed.model import Model
+        from dnlp.wed.model import CharModel
 
-        model = Model(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        model = CharModel(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
         model.train()
         model.save()
 
     def test_predict(self):
         self.assertTrue(True)
 
-        from dnlp.wed.model import Model
         from dnlp.wed.model import CharModel
+        from dnlp.wed.model import PinyinModel
 
-        # model = Model.load()
-        model = CharModel.load()
+        model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'char', 'wed.model')
+        keras_model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'char', 'wed.kmodel')
+        cmodel = CharModel.load(model_file=model_file, keras_model_file=keras_model_file)
+
+        model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'pinyin', 'wed.model')
+        keras_model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'pinyin', 'wed.kmodel')
+        pmodel = PinyinModel.load(model_file=model_file, keras_model_file=keras_model_file)
 
         txts = [
             '东西不错',
@@ -129,26 +134,28 @@ class MyTestCase(unittest.TestCase):
         ]
 
         lines = [_ for _ in iter_file(os.path.join(RESOURCE_PATH, 'corpus', 'wed', 'comment.txt'))]
-        scores = model.predict(lines)
 
-        xlines = []
-        xscores = []
-        for line, score in zip(lines, scores):
-            print(line)
-            print(score)
+        cscores = cmodel.predict(lines)
+        pscores = pmodel.predict(lines)
 
-            if score:
-                xlines.append(xlines)
-                xscores.append(score)
+        for line, cscore, pscore in zip(lines, cscores, pscores):
+            if not cscore or not pscore:
+                continue
 
-        import numpy as np
+            '''无意义文本'''
+            '''
+            if cscore < -10:
+                print(line)
 
-        nscores = np.array(xscores)
-        print(nscores.sum(), nscores.size)
-        print(nscores.sum() / nscores.size)
-        for i in nscores.argsort()[-1:-10:-1]:
-            print(xlines[i])
-            print(nscores[i])
+                rate = pscore - cscore
+                print('char score:', cscore, 'pinyin score:', pscore, 'rate:', rate)
+            '''
+
+            '''纠错文本'''
+            rate = pscore - cscore
+            if rate > 20:
+                print(line)
+                print('char score:', cscore, 'pinyin score:', pscore, 'rate:', rate)
 
     def test_pinyin_model(self):
         self.assertTrue(True)
@@ -158,6 +165,35 @@ class MyTestCase(unittest.TestCase):
         model = PinyinModel(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
         model.train()
         model.save()
+
+    def test_homonym(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import HomoModel
+
+        m = HomoModel(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+        print(m.pinyin2chars('hen'))
+        print(m.dictx)
+
+    def test_correct(self):
+        self.assertTrue(True)
+
+        from dnlp.wed.model import CharModel
+        from dnlp.wed.model import PinyinModel
+        from dnlp.wed.model import HomoModel
+
+        model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'char', 'wed.model')
+        keras_model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'char', 'wed.kmodel')
+        cmodel = CharModel.load(model_file=model_file, keras_model_file=keras_model_file)
+
+        model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'pinyin', 'wed.model')
+        keras_model_file = os.path.join(RESOURCE_PATH, 'model', 'wed', 'pinyin', 'wed.kmodel')
+        pmodel = PinyinModel.load(model_file=model_file, keras_model_file=keras_model_file)
+
+        m = HomoModel(os.path.join(RESOURCE_PATH, 'corpus', 'std.min.txt'))
+
+        txt = '象素不行'
+        print(pmodel.correct(txt, cmodel, m))
 
 
 if __name__ == '__main__':

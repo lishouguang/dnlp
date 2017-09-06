@@ -10,6 +10,10 @@ import random
 import copy
 import numpy as np
 
+from itertools import product
+from collections import Counter
+from collections import defaultdict
+
 from sklearn.utils import shuffle
 
 import keras
@@ -26,7 +30,7 @@ from dnlp.utils import read_obj
 from dnlp.nlp.pinyin import tag_pinyin
 
 
-class Model(object):
+class BaseModel(object):
 
     SYMBOL_SOS = '<SOS>'
     SYMBOL_EOS = '<EOS>'
@@ -71,7 +75,7 @@ class Model(object):
         return self._chars
 
     def vocab_char2idx(self, char):
-        return self._char2idx.get(char, self._char2idx[Model.SYMBOL_UNKNOW])
+        return self._char2idx.get(char, self._char2idx[BaseModel.SYMBOL_UNKNOW])
 
     def vocab_idx2char(self, idx):
         return self._idx2char[idx]
@@ -91,15 +95,15 @@ class Model(object):
                         # words.append(x)
                         # pinyins.append(x)
 
-                        symbol = Model.SYMBOL_ENV_NUM
+                        symbol = BaseModel.SYMBOL_ENV_NUM
                         if re.match(r'^[a-z]+$', x):
-                            symbol = Model.SYMBOL_ENV
+                            symbol = BaseModel.SYMBOL_ENV
                         elif re.match(r'^[0-9]+$', x):
-                            symbol = Model.SYMBOL_NUM
+                            symbol = BaseModel.SYMBOL_NUM
                         elif re.match(r'^[a-z0-9]$', x):
-                            symbol = Model.SYMBOL_ENV_NUM
+                            symbol = BaseModel.SYMBOL_ENV_NUM
                         elif re.match(r'^[。？！!?，,]$', x):
-                            symbol = Model.SYMBOL_PUN
+                            symbol = BaseModel.SYMBOL_PUN
 
                         words.append(symbol)
                         pinyins.append(symbol)
@@ -118,13 +122,13 @@ class Model(object):
         # chars.remove('？')
         # chars.remove(a'！')
 
-        chars.add(Model.SYMBOL_SOS)
-        chars.add(Model.SYMBOL_EOS)
-        chars.add(Model.SYMBOL_UNKNOW)
-        chars.add(Model.SYMBOL_ENV)
-        chars.add(Model.SYMBOL_NUM)
-        chars.add(Model.SYMBOL_ENV_NUM)
-        chars.add(Model.SYMBOL_PUN)
+        chars.add(BaseModel.SYMBOL_SOS)
+        chars.add(BaseModel.SYMBOL_EOS)
+        chars.add(BaseModel.SYMBOL_UNKNOW)
+        chars.add(BaseModel.SYMBOL_ENV)
+        chars.add(BaseModel.SYMBOL_NUM)
+        chars.add(BaseModel.SYMBOL_ENV_NUM)
+        chars.add(BaseModel.SYMBOL_PUN)
 
         chars = sorted(list(chars))
         char2idx = dict((c, i) for i, c in enumerate(chars))
@@ -139,7 +143,7 @@ class Model(object):
         next_chars = []
 
         pad_num = self._maxlen - 1
-        words = [Model.SYMBOL_SOS] * pad_num + words + [Model.SYMBOL_EOS] * pad_num
+        words = [BaseModel.SYMBOL_SOS] * pad_num + words + [BaseModel.SYMBOL_EOS] * pad_num
 
         for i in range(0, len(words) - self._maxlen, self._step):
             histories.append(words[i: i + self._maxlen])
@@ -212,7 +216,7 @@ class Model(object):
 
                 generated = []
                 # history = [SYMBOL_SOS, SYMBOL_SOS, SYMBOL_SOS] + random.sample(chars, 1)
-                history = [Model.SYMBOL_SOS] * (self._maxlen - 1)
+                history = [BaseModel.SYMBOL_SOS] * (self._maxlen - 1)
                 generated += history
                 print('----- Generating with seed: "' + ' '.join(history) + '"')
                 sys.stdout.write(' '.join(generated))
@@ -299,7 +303,7 @@ class Model(object):
         :param model_file: Model对象保存的文件
         :param keras_model_file: keras model保存的文件
         :return:
-        :rtype: Model
+        :rtype: BaseModel
         """
         kmodel = keras.models.load_model(keras_model_file)
 
@@ -309,24 +313,82 @@ class Model(object):
         return model
 
 
-class CharModel(Model):
+class CharModel(BaseModel):
 
     def __init__(self, corpus_file, vocab_file=None, maxlen=5, step=1, workspace=None):
         if workspace is None:
             workspace = os.path.join(RESOURCE_PATH, 'model', 'wed', 'char')
 
-        Model.__init__(self, corpus_file, vocab_file=vocab_file, maxlen=maxlen, step=step, workspace=workspace)
+        BaseModel.__init__(self, corpus_file, vocab_file=vocab_file, maxlen=maxlen, step=step, workspace=workspace)
 
 
-class PinyinModel(Model):
+class PinyinModel(BaseModel):
 
     def __init__(self, corpus_file, vocab_file=None, maxlen=5, step=1, workspace=None):
         if workspace is None:
             workspace = os.path.join(RESOURCE_PATH, 'model', 'wed', 'pinyin')
 
-        Model.__init__(self, corpus_file, vocab_file=vocab_file, maxlen=maxlen, step=step, workspace=workspace)
+        BaseModel.__init__(self, corpus_file, vocab_file=vocab_file, maxlen=maxlen, step=step, workspace=workspace)
 
     @classmethod
     def segment_pinyin_txt(cls, txt):
-        words, pinyins = Model.segment_pinyin_txt(txt)
+        words, pinyins = BaseModel.segment_pinyin_txt(txt)
         return pinyins, pinyins
+
+    def correct(self, txt, charmodel, homomodel):
+        """
+        :param txt:
+        :param charmodel:
+        :param homomodel:
+        :return:
+        """
+        if not txt:
+            return
+
+        # TODO 文本预处理，清洗/添加标点，根据句号分句
+
+        pinyins, _ = self.segment_pinyin_txt(txt)
+
+        cand_chars = []
+        for pinyin in pinyins:
+            homos = homomodel.pinyin2chars(pinyin)
+            # TODO 目前只取top5
+            cand_chars.append(homos[:5])
+
+        candidates = [''.join(cchars) for cchars in product(*cand_chars)]
+
+        maxs = -999
+        idx = -1
+        for i, s in enumerate(charmodel.predict(candidates)):
+            if s is not None and s > maxs:
+                maxs = s
+                idx = i
+
+        return candidates[idx]
+
+
+class HomoModel(object):
+
+    def __init__(self, vocab_file):
+        self._pinyin2chars = defaultdict(set)
+        self._counter = Counter()
+        self._char2pinyin = dict()
+
+        for line in iter_file(vocab_file):
+            for c, p in tag_pinyin(line):
+                self._pinyin2chars[p].add(c)
+                self._char2pinyin[c] = p
+
+                self._counter.update([c])
+
+    def pinyin2chars(self, pinyin):
+        chars = [(c, self._counter.get(c)) for c in self._pinyin2chars.get(pinyin, [])]
+        sorted_chars = sorted(chars, key=lambda tp: tp[1], reverse=True)
+        return [c for c, _ in sorted_chars]
+
+    def char2pinyin(self, char):
+        return self._char2pinyin.get(char)
+
+    @property
+    def dictx(self):
+        return self._pinyin2chars
